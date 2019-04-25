@@ -1,3 +1,4 @@
+#include <ArduinoJson.h>
 #include <Wire.h>
 #include <math.h> //library includes mathematical functions
 
@@ -5,6 +6,8 @@ const int MPU=0x68; //I2C address of the MPU-6050
 int16_t AcX,AcY,AcZ,GyX,GyY,GyZ; //16-bit integers
 int AcXcal,AcYcal,AcZcal,GyXcal,GyYcal,GyZcal,tcal; //calibration variables
 double pitch,roll;
+int accel[3];
+int gyro[3];
 
 void setup()
 {
@@ -13,11 +16,14 @@ void setup()
     Wire.write(0x6B); // PWR_MGMT_1 register
     Wire.write(0); // set to zero (wakes up the MPU-6050)  
     Wire.endTransmission(true); //ends transmission to I2C slave device
-    Serial.begin(38400); //serial communication at 9600 bauds
+    Serial.begin(38400); //serial communication at 38400 bauds
 }
 
 void loop()
 {
+
+
+  
     Wire.beginTransmission(MPU); //begin transmission to I2C slave device
     Wire.write(0x3B); // starting with register 0x3B (ACCEL_XOUT_H)
     Wire.endTransmission(false); //restarts transmission to I2C slave device
@@ -51,22 +57,45 @@ void loop()
     getAngle(AcX,AcY,AcZ);
   
     //printing values to serial port
-    Serial.print("Angle: ");
-    Serial.print("Pitch = "); Serial.print(pitch);
-    Serial.print(" Roll = "); Serial.println(roll);
-  
-    Serial.print("Accelerometer: ");
-    Serial.print("X = "); Serial.print(AcX + AcXcal);
-    Serial.print(" Y = "); Serial.print(AcY + AcYcal);
-    Serial.print(" Z = "); Serial.println(AcZ + AcZcal); 
+
+    //Acceleration Values
+    accel[0] = AcX + AcXcal;
+    accel[1] = AcY + AcYcal;
+    accel[2] = AcZ + AcZcal;
+
+    //Gyro Values
+    gyro[0] = GyX + GyXcal;
+    gyro[1] = GyY + GyYcal;
+    gyro[2] = GyZ + GyZcal;
     /*
-    Serial.print("Temperature in celsius = "); Serial.print(t);  
-    Serial.print(" fahrenheit = "); Serial.println(tf);  
+    Serial.print("X = "); Serial.print(gyro[0]);
+    Serial.print(" Y = "); Serial.print(gyro[1]);
+    Serial.print(" Z = "); Serial.println(gyro[2]); 
     */
-    Serial.print("Gyroscope: ");
-    Serial.print("X = "); Serial.print(GyX + GyXcal);
-    Serial.print(" Y = "); Serial.print(GyY + GyYcal);
-    Serial.print(" Z = "); Serial.println(GyZ + GyZcal); 
+    StaticJsonBuffer<200>  jBuffer;
+    JsonObject& root = jBuffer.createObject();
+    
+    JsonObject& jAngle = root.createNestedObject("Angle");
+    jAngle["roll"] = roll;
+    jAngle["pitch"] = pitch;
+    /*
+    JsonArray& jAngle = root.createNestedArray("Angle");
+    jAngle.add(pitch);
+    jAngle.add(roll);
+    */
+    JsonArray& jAccelerometer = root.createNestedArray("Accel");
+    jAccelerometer.add(accel[0]);
+    jAccelerometer.add(accel[1]);
+    jAccelerometer.add(accel[2]);
+
+    JsonArray& jGyro = root.createNestedArray("Gyro");
+    jGyro.add(gyro[0]);
+    jGyro.add(gyro[1]);
+    jGyro.add(gyro[2]);
+    
+    root.printTo(Serial);
+    Serial.println();
+
     
 }
 
